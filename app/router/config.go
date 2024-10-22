@@ -101,7 +101,8 @@ func (rr *RoutingRule) BuildCondition() (Condition, error) {
 	}
 
 	if conds.Len() == 0 {
-		return nil, errors.New("this rule has no effective fields").AtWarning()
+		// return nil, errors.New("this rule has no effective fields").AtWarning()
+		return nil, nil
 	}
 
 	return conds, nil

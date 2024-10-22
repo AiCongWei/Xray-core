@@ -59,6 +59,9 @@ func (r *Router) Init(ctx context.Context, config *Config, d dns.Client, ohm out
 		if err != nil {
 			return err
 		}
+		if cond == nil {
+			continue
+		}
 		rr := &Rule{
 			Condition: cond,
 			Tag:       rule.GetTag(),
@@ -132,6 +135,9 @@ func (r *Router) ReloadRules(config *Config, shouldAppend bool) error {
 		cond, err := rule.BuildCondition()
 		if err != nil {
 			return err
+		}
+		if cond == nil {
+			continue
 		}
 		rr := &Rule{
 			Condition: cond,

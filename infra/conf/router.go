@@ -219,10 +219,11 @@ func loadIP(file, code string) ([]*router.CIDR, error) {
 			return nil, errors.New("failed to load file: ", file).Base(err)
 		}
 		bs = find(bs, []byte(code))
-		if bs == nil {
-			return nil, errors.New("code not found in ", file, ": ", code)
-		}
 		var geoip router.GeoIP
+		if bs == nil {
+			// return nil, errors.New("code not found in ", file, ": ", code)
+			return geoip.Cidr, nil
+		}
 		if err := proto.Unmarshal(bs, &geoip); err != nil {
 			return nil, errors.New("error unmarshal IP in ", file, ": ", code).Base(err)
 		}
@@ -241,10 +242,11 @@ func loadSite(file, code string) ([]*router.Domain, error) {
 			return nil, errors.New("failed to load file: ", file).Base(err)
 		}
 		bs = find(bs, []byte(code))
-		if bs == nil {
-			return nil, errors.New("list not found in ", file, ": ", code)
-		}
 		var geosite router.GeoSite
+		if bs == nil {
+			// return nil, errors.New("list not found in ", file, ": ", code)
+			return geosite.Domain, nil
+		}
 		if err := proto.Unmarshal(bs, &geosite); err != nil {
 			return nil, errors.New("error unmarshal Site in ", file, ": ", code).Base(err)
 		}

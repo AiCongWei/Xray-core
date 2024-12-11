@@ -1,6 +1,7 @@
 package conf
 
 import (
+	"context"
 	"encoding/json"
 	"runtime"
 	"strconv"
@@ -216,6 +217,7 @@ func loadIP(file, code string) ([]*router.CIDR, error) {
 	if IPCache[index] == nil {
 		bs, err := loadFile(file)
 		if err != nil {
+			errors.LogInfo(context.Background(), "geoip: ip: ignore ", file, "/", code)
 			return nil, errors.New("failed to load file: ", file).Base(err)
 		}
 		bs = find(bs, []byte(code))
@@ -227,7 +229,8 @@ func loadIP(file, code string) ([]*router.CIDR, error) {
 		if err := proto.Unmarshal(bs, &geoip); err != nil {
 			return nil, errors.New("error unmarshal IP in ", file, ": ", code).Base(err)
 		}
-		defer runtime.GC()     // or debug.FreeOSMemory()
+		defer runtime.GC() // or debug.FreeOSMemory()
+		errors.LogInfo(context.Background(), "geoip: ip: loaded ", file, "/", code, ", count=", len(geoip.Cidr))
 		return geoip.Cidr, nil // do not cache geoip
 		IPCache[index] = &geoip
 	}
@@ -239,6 +242,7 @@ func loadSite(file, code string) ([]*router.Domain, error) {
 	if SiteCache[index] == nil {
 		bs, err := loadFile(file)
 		if err != nil {
+			errors.LogInfo(context.Background(), "geoip: site: ignore ", file, "/", code)
 			return nil, errors.New("failed to load file: ", file).Base(err)
 		}
 		bs = find(bs, []byte(code))
@@ -250,7 +254,8 @@ func loadSite(file, code string) ([]*router.Domain, error) {
 		if err := proto.Unmarshal(bs, &geosite); err != nil {
 			return nil, errors.New("error unmarshal Site in ", file, ": ", code).Base(err)
 		}
-		defer runtime.GC()         // or debug.FreeOSMemory()
+		defer runtime.GC() // or debug.FreeOSMemory()
+		errors.LogInfo(context.Background(), "geoip: site: loaded ", file, "/", code, ", count=", len(geosite.Domain))
 		return geosite.Domain, nil // do not cache geosite
 		SiteCache[index] = &geosite
 	}
@@ -377,8 +382,20 @@ func loadGeositeWithAttr(file string, siteWithAttr string) ([]*router.Domain, er
 
 func parseDomainRule(domain string) ([]*router.Domain, error) {
 	if strings.HasPrefix(domain, "geosite:") {
-		country := strings.ToUpper(domain[8:])
-		domains, err := loadGeositeWithAttr("geosite.dat", country)
+		inputFile := "geosite.dat"
+		domain = domain[8:]
+
+		if strings.Contains(domain, "/") {
+			parts := strings.Split(domain, "/")
+			if len(parts) != 2 {
+				return nil, errors.New("invalid geosite rule: ", domain)
+			}
+			inputFile = "geosite_" + parts[0] + ".dat"
+			domain = parts[1]
+		}
+
+		country := strings.ToUpper(domain)
+		domains, err := loadGeositeWithAttr(inputFile, country)
 		if err != nil {
 			// return nil, errors.New("failed to load geosite: ", country).Base(err)
 			return make([]*router.Domain, 0), nil
@@ -458,10 +475,21 @@ func ToCidrList(ips StringList) ([]*router.GeoIP, error) {
 				country = ip[7:]
 				isReverseMatch = true
 			}
+
+			inputFile := "geoip.dat"
+			if strings.Contains(country, "/") {
+				parts := strings.Split(country, "/")
+				if len(parts) != 2 {
+					return nil, errors.New("invalid geoip rule: ", country)
+				}
+				inputFile = "geoip_" + parts[0] + ".dat"
+				country = parts[1]
+			}
+
 			if len(country) == 0 {
 				return nil, errors.New("empty country name in rule")
 			}
-			geoip, err := loadGeoIP(strings.ToUpper(country))
+			geoip, err := loadIP(inputFile, strings.ToUpper(country))
 			if err != nil {
 				// return nil, errors.New("failed to load GeoIP: ", country).Base(err)
 				continue

@@ -71,9 +71,9 @@ func (r *BalancingRule) Build() (*router.BalancingRule, error) {
 }
 
 type RouterConfig struct {
-	RuleList       []json.RawMessage  `json:"rules"`
-	DomainStrategy *string            `json:"domainStrategy"`
-	Balancers      []*BalancingRule   `json:"balancers"`
+	RuleList       []json.RawMessage `json:"rules"`
+	DomainStrategy *string           `json:"domainStrategy"`
+	Balancers      []*BalancingRule  `json:"balancers"`
 
 	DomainMatcher string `json:"domainMatcher"`
 }
@@ -380,7 +380,8 @@ func parseDomainRule(domain string) ([]*router.Domain, error) {
 		country := strings.ToUpper(domain[8:])
 		domains, err := loadGeositeWithAttr("geosite.dat", country)
 		if err != nil {
-			return nil, errors.New("failed to load geosite: ", country).Base(err)
+			// return nil, errors.New("failed to load geosite: ", country).Base(err)
+			return make([]*router.Domain, 0), nil
 		}
 		return domains, nil
 	}
@@ -462,7 +463,8 @@ func ToCidrList(ips StringList) ([]*router.GeoIP, error) {
 			}
 			geoip, err := loadGeoIP(strings.ToUpper(country))
 			if err != nil {
-				return nil, errors.New("failed to load GeoIP: ", country).Base(err)
+				// return nil, errors.New("failed to load GeoIP: ", country).Base(err)
+				continue
 			}
 
 			geoipList = append(geoipList, &router.GeoIP{

@@ -35,3 +35,9 @@ build:
 clean:
 	go clean -v -i $(PWD)
 	rm -f xray xray.exe wxray.exe xray_softfloat
+
+.PHONY: protobuf
+protobuf:
+	find . -name "*.proto" > proto-input.txt
+	protoc --go_out=paths=source_relative:. @proto-input.txt
+	rm proto-input.txt

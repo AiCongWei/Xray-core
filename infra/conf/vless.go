@@ -29,9 +29,10 @@ type VLessInboundFallback struct {
 }
 
 type VLessInboundConfig struct {
-	Clients    []json.RawMessage       `json:"clients"`
-	Decryption string                  `json:"decryption"`
-	Fallbacks  []*VLessInboundFallback `json:"fallbacks"`
+	Clients          []json.RawMessage       `json:"clients"`
+	Decryption       string                  `json:"decryption"`
+	Fallbacks        []*VLessInboundFallback `json:"fallbacks"`
+	AdditionIdPolicy *string                 `json:"additionIdPolicy"`
 }
 
 // Build implements Buildable
@@ -66,6 +67,19 @@ func (c *VLessInboundConfig) Build() (proto.Message, error) {
 
 		user.Account = serial.ToTypedMessage(account)
 		config.Clients[idx] = user
+	}
+
+	if c.AdditionIdPolicy != nil {
+		switch strings.ToLower(*c.AdditionIdPolicy) {
+		case "head-prefix":
+			value := protocol.AdditionIdPolicy_HEAD_PREFIX
+			config.AdditionIdPolicy = &value
+		case "body-prefix":
+			value := protocol.AdditionIdPolicy_BODY_PREFIX
+			config.AdditionIdPolicy = &value
+		default:
+			return nil, errors.New("VLESS settings: unknown additionIdPolicy: ", *c.AdditionIdPolicy)
+		}
 	}
 
 	if c.Decryption != "none" {
@@ -136,7 +150,9 @@ type VLessOutboundVnext struct {
 }
 
 type VLessOutboundConfig struct {
-	Vnext []*VLessOutboundVnext `json:"vnext"`
+	Vnext            []*VLessOutboundVnext `json:"vnext"`
+	AdditionId       *uint64               `json:"additionId"`
+	AdditionIdPolicy *string               `json:"additionIdPolicy"`
 }
 
 // Build implements Buildable
@@ -189,6 +205,23 @@ func (c *VLessOutboundConfig) Build() (proto.Message, error) {
 			spec.User[idx] = user
 		}
 		config.Vnext[idx] = spec
+	}
+
+	if c.AdditionId != nil {
+		config.AdditionId = c.AdditionId
+	}
+
+	if c.AdditionIdPolicy != nil {
+		switch strings.ToLower(*c.AdditionIdPolicy) {
+		case "head-prefix":
+			value := protocol.AdditionIdPolicy_HEAD_PREFIX
+			config.AdditionIdPolicy = &value
+		case "body-prefix":
+			value := protocol.AdditionIdPolicy_BODY_PREFIX
+			config.AdditionIdPolicy = &value
+		default:
+			return nil, errors.New("VLESS settings: unknown additionIdPolicy: ", *c.AdditionIdPolicy)
+		}
 	}
 
 	return config, nil

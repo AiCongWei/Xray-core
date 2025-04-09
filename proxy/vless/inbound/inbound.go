@@ -68,6 +68,7 @@ type Handler struct {
 	validator             vless.Validator
 	dns                   dns.Client
 	fallbacks             map[string]map[string]map[string]*Fallback // or nil
+	additionIdPolicy      *protocol.AdditionIdPolicy
 	// regexps               map[string]*regexp.Regexp       // or nil
 }
 
@@ -79,6 +80,7 @@ func New(ctx context.Context, config *Config, dc dns.Client, validator vless.Val
 		policyManager:         v.GetFeature(policy.ManagerType()).(policy.Manager),
 		dns:                   dc,
 		validator:             validator,
+		additionIdPolicy:      config.AdditionIdPolicy,
 	}
 
 	if config.Fallbacks != nil {
@@ -201,6 +203,7 @@ func (h *Handler) Process(ctx context.Context, network net.Network, connection s
 
 	var request *protocol.RequestHeader
 	var requestAddons *encoding.Addons
+	var additionId *uint64
 	var err error
 
 	napfb := h.fallbacks
@@ -209,10 +212,14 @@ func (h *Handler) Process(ctx context.Context, network net.Network, connection s
 	if isfb && firstLen < 18 {
 		err = errors.New("fallback directly")
 	} else {
-		request, requestAddons, isfb, err = encoding.DecodeRequestHeader(isfb, first, reader, h.validator)
+		request, requestAddons, isfb, additionId, err = encoding.DecodeRequestHeader(isfb, first, reader, h.validator, h.additionIdPolicy)
 	}
 
 	if err != nil {
+		if additionId != nil {
+			errors.LogInfo(ctx, "additionId = "+strconv.FormatUint(*additionId, 10))
+		}
+
 		if isfb {
 			if err := connection.SetReadDeadline(time.Time{}); err != nil {
 				errors.LogWarningInner(ctx, err, "unable to set back read deadline")

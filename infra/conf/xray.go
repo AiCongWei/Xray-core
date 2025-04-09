@@ -195,6 +195,18 @@ func (c *InboundDetourConfig) Build() (*core.InboundHandlerConfig, error) {
 		}
 	}
 
+	// AdditionIdPolicy *string                        `json:"additionIdPolicy"`
+	// if c.AdditionIdPolicy != nil {
+	// 	switch strings.ToLower(*c.AdditionIdPolicy) {
+	// 	case "head-prefix":
+	// 		receiverSettings.AdditionIdPolicy = protocol.AdditionIdPolicy_HEAD_PREFIX
+	// 	case "body-suffix":
+	// 		receiverSettings.AdditionIdPolicy = protocol.AdditionIdPolicy_BODY_PREFIX
+	// 	default:
+	// 		return nil, errors.New("unknown additionIdPolicy: ", *c.AdditionIdPolicy)
+	// 	}
+	// }
+
 	if c.Allocation != nil {
 		concurrency := -1
 		if c.Allocation.Concurrency != nil && c.Allocation.Strategy == "random" {
@@ -363,7 +375,7 @@ func (c *StatsConfig) Build() (*stats.Config, error) {
 type Config struct {
 	// Deprecated: Global transport config is no longer used
 	// left for returning error
-	Transport        map[string]json.RawMessage `json:"transport"`
+	Transport map[string]json.RawMessage `json:"transport"`
 
 	LogConfig        *LogConfig              `json:"log"`
 	RouterConfig     *RouterConfig           `json:"routing"`

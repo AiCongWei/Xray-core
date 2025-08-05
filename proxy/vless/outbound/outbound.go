@@ -39,10 +39,12 @@ func init() {
 
 // Handler is an outbound connection handler for VLess protocol.
 type Handler struct {
-	serverList    *protocol.ServerList
-	serverPicker  protocol.ServerPicker
-	policyManager policy.Manager
-	cone          bool
+	serverList       *protocol.ServerList
+	serverPicker     protocol.ServerPicker
+	policyManager    policy.Manager
+	cone             bool
+	additionId       *uint64
+	additionIdPolicy *protocol.AdditionIdPolicy
 }
 
 // New creates a new VLess outbound handler.
@@ -58,10 +60,12 @@ func New(ctx context.Context, config *Config) (*Handler, error) {
 
 	v := core.MustFromContext(ctx)
 	handler := &Handler{
-		serverList:    serverList,
-		serverPicker:  protocol.NewRoundRobinServerPicker(serverList),
-		policyManager: v.GetFeature(policy.ManagerType()).(policy.Manager),
-		cone:          ctx.Value("cone").(bool),
+		serverList:       serverList,
+		serverPicker:     protocol.NewRoundRobinServerPicker(serverList),
+		policyManager:    v.GetFeature(policy.ManagerType()).(policy.Manager),
+		cone:             ctx.Value("cone").(bool),
+		additionId:       config.AdditionId,
+		additionIdPolicy: config.AdditionIdPolicy,
 	}
 
 	return handler, nil
@@ -189,7 +193,7 @@ func (h *Handler) Process(ctx context.Context, link *transport.Link, dialer inte
 		defer timer.SetTimeout(sessionPolicy.Timeouts.DownlinkOnly)
 
 		bufferWriter := buf.NewBufferedWriter(buf.NewWriter(conn))
-		if err := encoding.EncodeRequestHeader(bufferWriter, request, requestAddons); err != nil {
+		if err := encoding.EncodeRequestHeader(bufferWriter, request, requestAddons, h.additionIdPolicy, h.additionId); err != nil {
 			return errors.New("failed to encode request header").Base(err).AtWarning()
 		}
 

@@ -7,7 +7,10 @@ option java_package = "com.xray.proxy.vless.outbound";
 option java_multiple_files = true;
 
 import "common/protocol/server_spec.proto";
+import "common/protocol/addition_id.proto";
 
 message Config {
   repeated xray.common.protocol.ServerEndpoint vnext = 1;
+  optional uint64 addition_id = 2;
+  optional xray.common.protocol.AdditionIdPolicy addition_id_policy = 3;
 }

@@ -52,6 +52,8 @@ type Handler struct {
 	server        *protocol.ServerSpec
 	policyManager policy.Manager
 	cone          bool
+	additionId       *uint64
+	additionIdPolicy *protocol.AdditionIdPolicy
 	encryption    *encryption.ClientInstance
 	reverse       *Reverse
 
@@ -80,6 +82,8 @@ func New(ctx context.Context, config *Config) (*Handler, error) {
 		server:        server,
 		policyManager: v.GetFeature(policy.ManagerType()).(policy.Manager),
 		cone:          ctx.Value("cone").(bool),
+		additionId:       config.AdditionId,
+		additionIdPolicy: config.AdditionIdPolicy,
 	}
 
 	a := handler.server.User.Account.(*vless.MemoryAccount)
@@ -313,7 +317,7 @@ func (h *Handler) Process(ctx context.Context, link *transport.Link, dialer inte
 		defer timer.SetTimeout(sessionPolicy.Timeouts.DownlinkOnly)
 
 		bufferWriter := buf.NewBufferedWriter(buf.NewWriter(conn))
-		if err := encoding.EncodeRequestHeader(bufferWriter, request, requestAddons); err != nil {
+		if err := encoding.EncodeRequestHeader(bufferWriter, request, requestAddons, h.additionIdPolicy, h.additionId); err != nil {
 			return errors.New("failed to encode request header").Base(err).AtWarning()
 		}
 

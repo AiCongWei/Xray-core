@@ -2,6 +2,7 @@ package encoding
 
 import (
 	"context"
+	"encoding/binary"
 	"io"
 
 	"github.com/xtls/xray-core/common/buf"
@@ -26,9 +27,21 @@ var addrParser = protocol.NewAddressParser(
 )
 
 // EncodeRequestHeader writes encoded request header into the given writer.
-func EncodeRequestHeader(writer io.Writer, request *protocol.RequestHeader, requestAddons *Addons) error {
+func EncodeRequestHeader(writer io.Writer, request *protocol.RequestHeader, requestAddons *Addons, additionIdPolicy *protocol.AdditionIdPolicy, additionId *uint64) error {
 	buffer := buf.StackNew()
 	defer buffer.Release()
+
+	if additionIdPolicy != nil && *additionIdPolicy == protocol.AdditionIdPolicy_HEAD_PREFIX {
+		buf := make([]byte, 8)
+		if additionId == nil {
+			binary.BigEndian.PutUint64(buf, 0)
+		} else {
+			binary.BigEndian.PutUint64(buf, *additionId)
+		}
+		if _, err := buffer.Write(buf); err != nil {
+			return errors.New("failed to write request addition id").Base(err)
+		}
+	}
 
 	if err := buffer.WriteByte(request.Version); err != nil {
 		return errors.New("failed to write request version").Base(err)
@@ -52,6 +65,18 @@ func EncodeRequestHeader(writer io.Writer, request *protocol.RequestHeader, requ
 		}
 	}
 
+	if additionIdPolicy != nil && *additionIdPolicy == protocol.AdditionIdPolicy_BODY_PREFIX {
+		buf := make([]byte, 8)
+		if additionId == nil {
+			binary.BigEndian.PutUint64(buf, 0)
+		} else {
+			binary.BigEndian.PutUint64(buf, *additionId)
+		}
+		if _, err := buffer.Write(buf); err != nil {
+			return errors.New("failed to write request addition id").Base(err)
+		}
+	}
+
 	if _, err := writer.Write(buffer.Bytes()); err != nil {
 		return errors.New("failed to write request header").Base(err)
 	}
@@ -60,9 +85,21 @@ func EncodeRequestHeader(writer io.Writer, request *protocol.RequestHeader, requ
 }
 
 // DecodeRequestHeader decodes and returns (if successful) a RequestHeader from an input stream.
-func DecodeRequestHeader(isfb bool, first *buf.Buffer, reader io.Reader, validator vless.Validator) ([]byte, *protocol.RequestHeader, *Addons, bool, error) {
+func DecodeRequestHeader(isfb bool, first *buf.Buffer, reader io.Reader, validator vless.Validator, additionIdPolicy *protocol.AdditionIdPolicy) ([]byte, *protocol.RequestHeader, *Addons, bool, *uint64, error) {
 	buffer := buf.StackNew()
 	defer buffer.Release()
+
+	var additionId *uint64 = nil
+
+	if additionIdPolicy != nil && *additionIdPolicy == protocol.AdditionIdPolicy_HEAD_PREFIX {
+		if first.Len() < 8 {
+			return nil, nil, nil, false, nil, errors.New("failed to read addition id")
+		}
+
+		value := binary.BigEndian.Uint64(first.Bytes()[:8])
+		additionId = &value
+		first.Advance(8)
+	}
 
 	request := new(protocol.RequestHeader)
 
@@ -70,7 +107,7 @@ func DecodeRequestHeader(isfb bool, first *buf.Buffer, reader io.Reader, validat
 		request.Version = first.Byte(0)
 	} else {
 		if _, err := buffer.ReadFullFrom(reader, 1); err != nil {
-			return nil, nil, nil, false, errors.New("failed to read request version").Base(err)
+			return nil, nil, nil, false, nil, errors.New("failed to read request version").Base(err)
 		}
 		request.Version = buffer.Byte(0)
 	}
@@ -85,13 +122,13 @@ func DecodeRequestHeader(isfb bool, first *buf.Buffer, reader io.Reader, validat
 		} else {
 			buffer.Clear()
 			if _, err := buffer.ReadFullFrom(reader, 16); err != nil {
-				return nil, nil, nil, false, errors.New("failed to read request user id").Base(err)
+				return nil, nil, nil, false, nil, errors.New("failed to read request user id").Base(err)
 			}
 			copy(id[:], buffer.Bytes())
 		}
 
 		if request.User = validator.Get(id); request.User == nil {
-			return nil, nil, nil, isfb, errors.New("invalid request user id")
+			return nil, nil, nil, isfb, nil, errors.New("invalid request user id")
 		}
 
 		if isfb {
@@ -100,12 +137,12 @@ func DecodeRequestHeader(isfb bool, first *buf.Buffer, reader io.Reader, validat
 
 		requestAddons, err := DecodeHeaderAddons(&buffer, reader)
 		if err != nil {
-			return nil, nil, nil, false, errors.New("failed to decode request header addons").Base(err)
+			return nil, nil, nil, false, nil, errors.New("failed to decode request header addons").Base(err)
 		}
 
 		buffer.Clear()
 		if _, err := buffer.ReadFullFrom(reader, 1); err != nil {
-			return nil, nil, nil, false, errors.New("failed to read request command").Base(err)
+			return nil, nil, nil, false, nil, errors.New("failed to read request command").Base(err)
 		}
 
 		request.Command = protocol.RequestCommand(buffer.Byte(0))
@@ -121,11 +158,23 @@ func DecodeRequestHeader(isfb bool, first *buf.Buffer, reader io.Reader, validat
 			}
 		}
 		if request.Address == nil {
-			return nil, nil, nil, false, errors.New("invalid request address")
+			return nil, nil, nil, false, nil, errors.New("invalid request address")
 		}
-		return id[:], request, requestAddons, false, nil
+
+		if additionIdPolicy != nil && *additionIdPolicy == protocol.AdditionIdPolicy_BODY_PREFIX {
+			buffer.Clear()
+			if _, err := buffer.ReadFullFrom(reader, 8); err != nil {
+				return nil, nil, nil, false, nil, errors.New("failed to read addition id").Base(err)
+			}
+
+			value := binary.BigEndian.Uint64(buffer.Bytes())
+			additionId = &value
+			buffer.Advance(8)
+		}
+
+		return id[:], request, requestAddons, false, additionId, nil
 	default:
-		return nil, nil, nil, isfb, errors.New("invalid request version")
+		return nil, nil, nil, isfb, nil, errors.New("invalid request version")
 	}
 }
 

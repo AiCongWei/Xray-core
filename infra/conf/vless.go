@@ -35,6 +35,7 @@ type VLessInboundConfig struct {
 	Fallbacks  []*VLessInboundFallback `json:"fallbacks"`
 	Flow       string                  `json:"flow"`
 	Testseed   []uint32                `json:"testseed"`
+	AdditionIdPolicy *string                 `json:"additionIdPolicy"`
 }
 
 // Build implements Buildable
@@ -88,6 +89,19 @@ func (c *VLessInboundConfig) Build() (proto.Message, error) {
 
 		user.Account = serial.ToTypedMessage(account)
 		config.Clients[idx] = user
+	}
+
+	if c.AdditionIdPolicy != nil {
+		switch strings.ToLower(*c.AdditionIdPolicy) {
+		case "head-prefix":
+			value := protocol.AdditionIdPolicy_HEAD_PREFIX
+			config.AdditionIdPolicy = &value
+		case "body-prefix":
+			value := protocol.AdditionIdPolicy_BODY_PREFIX
+			config.AdditionIdPolicy = &value
+		default:
+			return nil, errors.New("VLESS settings: unknown additionIdPolicy: ", *c.AdditionIdPolicy)
+		}
 	}
 
 	config.Decryption = c.Decryption
@@ -220,6 +234,8 @@ type VLessOutboundConfig struct {
 	Testpre    uint32                `json:"testpre"`
 	Testseed   []uint32              `json:"testseed"`
 	Vnext      []*VLessOutboundVnext `json:"vnext"`
+	AdditionId       *uint64         `json:"additionId"`
+	AdditionIdPolicy *string         `json:"additionIdPolicy"`
 }
 
 // Build implements Buildable
@@ -339,6 +355,23 @@ func (c *VLessOutboundConfig) Build() (proto.Message, error) {
 		}
 		config.Vnext = spec
 		break
+	}
+
+	if c.AdditionId != nil {
+		config.AdditionId = c.AdditionId
+	}
+
+	if c.AdditionIdPolicy != nil {
+		switch strings.ToLower(*c.AdditionIdPolicy) {
+		case "head-prefix":
+			value := protocol.AdditionIdPolicy_HEAD_PREFIX
+			config.AdditionIdPolicy = &value
+		case "body-prefix":
+			value := protocol.AdditionIdPolicy_BODY_PREFIX
+			config.AdditionIdPolicy = &value
+		default:
+			return nil, errors.New("VLESS settings: unknown additionIdPolicy: ", *c.AdditionIdPolicy)
+		}
 	}
 
 	return config, nil

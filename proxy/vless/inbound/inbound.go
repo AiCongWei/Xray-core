@@ -78,6 +78,7 @@ type Handler struct {
 	wrapLink               func(ctx context.Context, link *transport.Link) *transport.Link
 	ctx                    context.Context
 	fallbacks              map[string]map[string]map[string]*Fallback // or nil
+	additionIdPolicy      *protocol.AdditionIdPolicy
 	// regexps               map[string]*regexp.Regexp       // or nil
 }
 
@@ -92,6 +93,7 @@ func New(ctx context.Context, config *Config, dc dns.Client, validator vless.Val
 		inboundHandlerManager:  v.GetFeature(feature_inbound.ManagerType()).(feature_inbound.Manager),
 		policyManager:          v.GetFeature(policy.ManagerType()).(policy.Manager),
 		validator:              validator,
+		additionIdPolicy:      config.AdditionIdPolicy,
 		outboundHandlerManager: v.GetFeature(outbound.ManagerType()).(outbound.Manager),
 		wrapLink:               wrapLinkFunc,
 		ctx:                    ctx,
@@ -298,6 +300,7 @@ func (h *Handler) Process(ctx context.Context, network net.Network, connection s
 	var userSentID []byte // not MemoryAccount.ID
 	var request *protocol.RequestHeader
 	var requestAddons *encoding.Addons
+	var additionId *uint64
 	var err error
 
 	napfb := h.fallbacks
@@ -306,10 +309,14 @@ func (h *Handler) Process(ctx context.Context, network net.Network, connection s
 	if isfb && firstLen < 18 {
 		err = errors.New("fallback directly")
 	} else {
-		userSentID, request, requestAddons, isfb, err = encoding.DecodeRequestHeader(isfb, first, reader, h.validator)
+		userSentID, request, requestAddons, isfb, additionId, err = encoding.DecodeRequestHeader(isfb, first, reader, h.validator, h.additionIdPolicy)
 	}
 
 	if err != nil {
+		if additionId != nil {
+			errors.LogInfo(ctx, "additionId = "+strconv.FormatUint(*additionId, 10))
+		}
+
 		if isfb {
 			if err := connection.SetReadDeadline(time.Time{}); err != nil {
 				errors.LogWarningInner(ctx, err, "unable to set back read deadline")

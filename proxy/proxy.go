@@ -735,6 +735,9 @@ func CopyRawConnIfExist(ctx context.Context, readerConn net.Conn, writerConn net
 				splice = false
 			}
 		}
+		if runtime.GOOS == "android" {
+			splice = false
+		}
 		if splice {
 			errors.LogDebug(ctx, "CopyRawConn splice")
 			statWriter, _ := writer.(*dispatcher.SizeStatWriter)

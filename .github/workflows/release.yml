@@ -4,9 +4,9 @@ on:
   workflow_dispatch:
   release:
     types: [published]
-  push:
-  pull_request:
-    types: [opened, synchronize, reopened]
+  # push:
+  # pull_request:
+  #  types: [opened, synchronize, reopened]
 
 jobs:
   check-assets:

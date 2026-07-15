@@ -15,6 +15,7 @@ import (
 	"github.com/xtls/xray-core/features/outbound"
 	"github.com/xtls/xray-core/transport"
 	"github.com/xtls/xray-core/transport/internet/stat"
+	"github.com/xtls/xray-core/transport/internet/byedpi"
 	"github.com/xtls/xray-core/transport/pipe"
 )
 
@@ -278,7 +279,26 @@ func DialSystem(ctx context.Context, dest net.Destination, sockopt *SocketConfig
 		return redirect(ctx, dest, sockopt.DialerProxy, h), nil
 	}
 
-	return effectiveSystemDialer.Dial(ctx, src, dest, sockopt)
+	return dialWithByedpi(ctx, src, dest, sockopt)
+}
+
+// dialWithByedpi dials a connection and wraps it with byedpi if configured.
+func dialWithByedpi(ctx context.Context, src net.Address, dest net.Destination, sockopt *SocketConfig) (stat.Connection, error) {
+	conn, err := effectiveSystemDialer.Dial(ctx, src, dest, sockopt)
+	if err != nil {
+		return nil, err
+	}
+
+	// Apply byedpi wrapper if configured
+	if sockopt != nil && sockopt.Byedpi != nil && (len(sockopt.Byedpi.Split) > 0 || len(sockopt.Byedpi.Disorder) > 0) {
+		cfg := byedpi.ParseConfig(sockopt.Byedpi.Disorder, sockopt.Byedpi.Split)
+		if cfg != nil {
+			conn = byedpi.NewConn(conn, cfg)
+			errors.LogInfo(ctx, "byedpi applied to connection")
+		}
+	}
+
+	return conn, nil
 }
 
 func InitSystemDialer(dc dns.Client, om outbound.Manager) {

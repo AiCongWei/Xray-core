@@ -63,6 +63,13 @@ type SocketConfig struct {
 	AddressPortStrategy   string                 `json:"addressPortStrategy"`
 	HappyEyeballsSettings *HappyEyeballsConfig   `json:"happyEyeballs"`
 	TrustedXForwardedFor  []string               `json:"trustedXForwardedFor"`
+	Byedpi                *ByedpiConfig           `json:"byedpi"`
+}
+
+// ByedpiConfig is the JSON config for byedpi DPI bypass.
+type ByedpiConfig struct {
+	Disorder []string `json:"disorder"`
+	Split    []string `json:"split"`
 }
 
 // Build implements Buildable.
@@ -162,6 +169,14 @@ func (c *SocketConfig) Build() (*internet.SocketConfig, error) {
 		happyEyeballs.MaxConcurrentTry = c.HappyEyeballsSettings.MaxConcurrentTry
 	}
 
+	var byedpiCfg *internet.ByedpiConfig
+	if c.Byedpi != nil && (len(c.Byedpi.Disorder) > 0 || len(c.Byedpi.Split) > 0) {
+		byedpiCfg = &internet.ByedpiConfig{
+			Disorder: c.Byedpi.Disorder,
+			Split:    c.Byedpi.Split,
+		}
+	}
+
 	return &internet.SocketConfig{
 		Mark:                 c.Mark,
 		Tfo:                  tfo,
@@ -183,5 +198,6 @@ func (c *SocketConfig) Build() (*internet.SocketConfig, error) {
 		AddressPortStrategy:  addressPortStrategy,
 		HappyEyeballs:        happyEyeballs,
 		TrustedXForwardedFor: c.TrustedXForwardedFor,
+		Byedpi:               byedpiCfg,
 	}, nil
 }

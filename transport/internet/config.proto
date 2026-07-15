@@ -157,6 +157,8 @@ message SocketConfig {
   HappyEyeballsConfig happy_eyeballs = 22;
 
   repeated string trusted_x_forwarded_for = 23;
+
+  ByedpiConfig byedpi = 24;
 }
 
 message HappyEyeballsConfig {
@@ -164,4 +166,15 @@ message HappyEyeballsConfig {
   uint32 interleave = 2;
   uint64 try_delayMs = 3;
   uint32 max_concurrent_try = 4;
+}
+
+// ByedpiConfig configures DPI bypass (split/disorder) for TCP connections.
+message ByedpiConfig {
+  // disorder defines byte offsets at which TCP segments are sent out of order.
+  // Format: "offset" or "offset+flag" (e.g. "1", "3+s", "9+s")
+  repeated string disorder = 1;
+
+  // split defines byte offsets at which TLS data is split into separate segments.
+  // Format: "offset" or "offset+flag" (e.g. "6+s", "20+s", "30+s")
+  repeated string split = 2;
 }

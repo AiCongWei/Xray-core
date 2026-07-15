@@ -747,6 +747,7 @@ type SocketConfig struct {
 	AddressPortStrategy        AddressPortStrategy  `protobuf:"varint,21,opt,name=address_port_strategy,json=addressPortStrategy,proto3,enum=xray.transport.internet.AddressPortStrategy" json:"address_port_strategy,omitempty"`
 	HappyEyeballs              *HappyEyeballsConfig `protobuf:"bytes,22,opt,name=happy_eyeballs,json=happyEyeballs,proto3" json:"happy_eyeballs,omitempty"`
 	TrustedXForwardedFor       []string             `protobuf:"bytes,23,rep,name=trusted_x_forwarded_for,json=trustedXForwardedFor,proto3" json:"trusted_x_forwarded_for,omitempty"`
+	Byedpi                     *ByedpiConfig        `protobuf:"bytes,24,opt,name=byedpi,proto3" json:"byedpi,omitempty"`
 	unknownFields              protoimpl.UnknownFields
 	sizeCache                  protoimpl.SizeCache
 }
@@ -924,6 +925,39 @@ func (x *SocketConfig) GetHappyEyeballs() *HappyEyeballsConfig {
 func (x *SocketConfig) GetTrustedXForwardedFor() []string {
 	if x != nil {
 		return x.TrustedXForwardedFor
+	}
+	return nil
+}
+
+func (x *SocketConfig) GetByedpi() *ByedpiConfig {
+	if x != nil {
+		return x.Byedpi
+	}
+	return nil
+}
+
+type ByedpiConfig struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Disorder      []string               `protobuf:"bytes,1,rep,name=disorder,proto3" json:"disorder,omitempty"`
+	Split         []string               `protobuf:"bytes,2,rep,name=split,proto3" json:"split,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ByedpiConfig) Reset()         { *x = ByedpiConfig{} }
+func (x *ByedpiConfig) String() string { return protoimpl.X.MessageStringOf(x) }
+func (*ByedpiConfig) ProtoMessage()    {}
+
+func (x *ByedpiConfig) GetDisorder() []string {
+	if x != nil {
+		return x.Disorder
+	}
+	return nil
+}
+
+func (x *ByedpiConfig) GetSplit() []string {
+	if x != nil {
+		return x.Split
 	}
 	return nil
 }
